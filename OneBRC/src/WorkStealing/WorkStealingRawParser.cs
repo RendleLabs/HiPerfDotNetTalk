@@ -1,34 +1,35 @@
 ﻿using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text;
+using OneBRC;
 using Shared;
 
-namespace OneBRC;
+namespace WorkStealing;
 
 public class WorkStealingRawParser
 {
     private const byte Semicolon = (byte)';';
     
     private readonly BlockingCollection<WorkStealingChunk> _chunks;
-    private readonly Dictionary<int, ValueCounter> _dictionary = new();
+    private readonly Dictionary<long, ValueCounter> _dictionary = new();
 
     public WorkStealingRawParser(BlockingCollection<WorkStealingChunk> chunks)
     {
         _chunks = chunks;
     }
 
-    public Dictionary<int, ValueCounter> Dictionary => _dictionary;
+    public Dictionary<long, ValueCounter> Dictionary => _dictionary;
 
     public unsafe void Run()
     {
+        var threadId = Thread.CurrentThread.ManagedThreadId;
         while (_chunks.TryTake(out var chunk))
         {
-            var span = new ReadOnlySpan<byte>(chunk.Pointer, chunk.Length);
             Run(chunk.Pointer, chunk.Length, _dictionary);
         }
     }
     
-    private static unsafe void Run(byte* pointer, long length, Dictionary<int, ValueCounter> dictionary)
+    private static unsafe void Run(byte* pointer, long length, Dictionary<long, ValueCounter> dictionary)
     {
         byte* end = pointer + length;
 
@@ -36,7 +37,7 @@ public class WorkStealingRawParser
         {
             var nameStart = pointer;
             
-            var key = KeyHash.FasterKey(ref pointer);
+            var key = KeyHash.FastKey(ref pointer);
             pointer++; // Semicolon
             var value = FastParse.FastParseIntFromFloat(ref pointer);
             pointer++; // NewLine

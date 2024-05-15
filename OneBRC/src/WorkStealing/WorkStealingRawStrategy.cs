@@ -1,12 +1,13 @@
 ﻿using System.Collections.Concurrent;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
+using Shared;
 
-namespace OneBRC;
+namespace WorkStealing;
 
-public class WorkStealingStrategy
+public class WorkStealingRawStrategy : IDisposable
 {
-    private const int ChunkSize = 1024 * 1024 * 32;
+    private const int ChunkSize = 1024 * 1024;
     private const byte NewLine = (byte)'\n';
     
     private readonly MemoryMappedFile _memoryMappedFile;
@@ -14,14 +15,23 @@ public class WorkStealingStrategy
     private readonly int _threadCount;
     private readonly BlockingCollection<WorkStealingChunk> _chunks = new();
 
-    public WorkStealingStrategy(MemoryMappedFile memoryMappedFile, long fileSize, int threadCount)
+    public WorkStealingRawStrategy(string filePath, int threadCount = 0)
+    {
+        _memoryMappedFile = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open, null, 0, MemoryMappedFileAccess.Read);
+        _fileSize = new FileInfo(filePath).Length;
+        _threadCount = threadCount > 0 ? threadCount : Environment.ProcessorCount;
+    }
+
+    public WorkStealingRawStrategy(MemoryMappedFile memoryMappedFile, long fileSize, int threadCount)
     {
         _memoryMappedFile = memoryMappedFile;
         _fileSize = fileSize;
         _threadCount = threadCount;
     }
 
-    public unsafe void Run()
+    public void Dispose() => _memoryMappedFile.Dispose();
+
+    public unsafe ICollection<ValueCounter> Run()
     {
         using var view = _memoryMappedFile.CreateViewAccessor(0L, _fileSize, MemoryMappedFileAccess.Read);
         byte* pointer = null;
@@ -38,17 +48,20 @@ public class WorkStealingStrategy
         }
 
         {
-            var p = pointer + offset;
             var length = _fileSize - offset;
-            _chunks.Add(new WorkStealingChunk(p, (int)length));
+            if (length > 0)
+            {
+                var p = pointer + offset;
+                _chunks.Add(new WorkStealingChunk(p, (int)length));
+            }
         }
-
+        
         WorkStealingRawParser[] parsers = new WorkStealingRawParser[_threadCount];
         for (int i = 0; i < _threadCount; i++)
         {
             parsers[i] = new WorkStealingRawParser(_chunks);
         }
-
+        
         Parallel.ForEach(parsers, new ParallelOptions { MaxDegreeOfParallelism = _threadCount }, p => p.Run());
         
         var final = parsers[0].Dictionary;
@@ -63,9 +76,6 @@ public class WorkStealingStrategy
             }
         }
 
-        foreach (var counter in final.Values.OrderBy(v => v.Name))
-        {
-            Console.WriteLine($"{counter.Name} : {counter.Min:F1}/{counter.Mean:F1}/{counter.Max:F1}");
-        }
+        return final.Values;
     }
 }

@@ -22,7 +22,7 @@ public struct ValueCounter
         else
         {
             if (value < _min) _min = value;
-            else if (value > _max) _max = value;
+            if (value > _max) _max = value;
         }
 
         _total += value;
@@ -35,7 +35,7 @@ public struct ValueCounter
         _total += other._total;
         if (other._min < _min) _min = other._min;
         if (other._max < _max) _max = other._max;
-        if (_name is null) _name = other._name;
+        _name ??= other._name;
     }
 
     public double Mean => ((double)_total / _count) / 1000;

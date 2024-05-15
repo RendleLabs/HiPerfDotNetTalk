@@ -1,4 +1,4 @@
-﻿namespace OneBRC;
+﻿namespace WorkStealing;
 
 public unsafe struct WorkStealingChunk
 {

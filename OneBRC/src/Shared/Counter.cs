@@ -20,6 +20,14 @@ public class Counter
         _total += value;
         ++_count;
     }
+    
+    public void Combine(Counter other)
+    {
+        _count += other._count;
+        _total += other._total;
+        if (other._min < _min) _min = other._min;
+        if (other._max < _max) _max = other._max;
+    }
 
     public float Mean => _total / _count;
     public float Min => _min;

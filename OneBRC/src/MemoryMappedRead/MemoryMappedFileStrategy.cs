@@ -1,21 +1,20 @@
-﻿using System.Diagnostics;
-using System.IO.MemoryMappedFiles;
-using System.Runtime.InteropServices;
+﻿using System.IO.MemoryMappedFiles;
+using Shared;
 
-namespace OneBRC;
+namespace MemoryMappedRead;
 
 public class MemoryMappedFileStrategy
 {
     private readonly int _threadCount;
     private readonly ParallelOptions _options;
     
-    public MemoryMappedFileStrategy(int threadCount)
+    public MemoryMappedFileStrategy(int threadCount = 0)
     {
-        _threadCount = threadCount;
-        _options = new() { MaxDegreeOfParallelism = threadCount };
+        _threadCount = threadCount > 0 ? threadCount : Environment.ProcessorCount;
+        _options = new() { MaxDegreeOfParallelism = _threadCount };
     }
     
-    public void Play(string filePath)
+    public ICollection<Counter> Play(string filePath)
     {
         var size = new FileInfo(filePath).Length;
         
@@ -24,10 +23,10 @@ public class MemoryMappedFileStrategy
 
         var offsets = MemoryMappedFileAnalyzer.GetOffsets(mmf, size, _threadCount);
         
-        Play(view, offsets);
+        return Play(view, offsets);
     }
     
-    public void Play(MemoryMappedViewAccessor view, MemoryMappedFileOffset[] offsets)
+    public ICollection<Counter> Play(MemoryMappedViewAccessor view, MemoryMappedFileOffset[] offsets)
     {
         var parsers = new MemoryParser[offsets.Length];
         
@@ -45,14 +44,17 @@ public class MemoryMappedFileStrategy
             var parser = parsers[i];
             foreach (var (key, counter) in parser.Dictionary)
             {
-                ref var current = ref CollectionsMarshal.GetValueRefOrAddDefault(final, key, out _);
-                current.Combine(counter);
+                if (final.TryGetValue(key, out var finalCounter))
+                {
+                    finalCounter.Combine(counter);
+                }
+                else
+                {
+                    final[key] = counter;
+                }
             }
         }
 
-        foreach (var counter in final.Values.OrderBy(v => v.Name))
-        {
-            Console.WriteLine($"{counter.Name} : {counter.Min:F1}/{counter.Mean:F1}/{counter.Max:F1}");
-        }
+        return final.Values;
     }
 }

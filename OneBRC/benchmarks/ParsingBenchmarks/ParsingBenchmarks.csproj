@@ -12,8 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\MemoryMappedReadValueCounter\MemoryMappedReadValueCounter.csproj" />
+    <ProjectReference Include="..\..\src\MemoryMappedRead\MemoryMappedRead.csproj" />
+    <ProjectReference Include="..\..\src\MultiThreadedFileHandling\MultiThreadedFileHandling.csproj" />
     <ProjectReference Include="..\..\src\StringParsing\StringParsing.csproj" />
     <ProjectReference Include="..\..\src\Utf8Stream\Utf8Stream.csproj" />
+    <ProjectReference Include="..\..\src\WorkStealing\WorkStealing.csproj" />
   </ItemGroup>
 
 </Project>

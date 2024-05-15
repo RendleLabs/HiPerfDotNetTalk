@@ -1,4 +1,4 @@
-﻿namespace OneBRC;
+﻿namespace MemoryMappedReadValueCounter;
 
 public readonly struct MemoryMappedFileOffset
 {

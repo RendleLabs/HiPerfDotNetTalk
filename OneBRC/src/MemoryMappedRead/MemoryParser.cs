@@ -1,16 +1,16 @@
 ﻿using System.IO.MemoryMappedFiles;
-using System.Runtime.InteropServices;
 using System.Text;
+using OneBRC;
 using Shared;
 
-namespace OneBRC;
+namespace MemoryMappedRead;
 
 internal class MemoryParser
 {
     private const byte NewLine = (byte)'\n';
     private const byte Semicolon = (byte)';';
 
-    private readonly Dictionary<long, ValueCounter> _dictionary = new();
+    private readonly Dictionary<long, Counter> _dictionary = new();
     private readonly MemoryMappedViewAccessor _viewAccessor;
     private readonly MemoryMappedFileOffset _fileOffset;
 
@@ -20,7 +20,7 @@ internal class MemoryParser
         _fileOffset = fileOffset;
     }
 
-    public Dictionary<long, ValueCounter> Dictionary => _dictionary;
+    public Dictionary<long, Counter> Dictionary => _dictionary;
 
     public unsafe void Run()
     {
@@ -53,7 +53,7 @@ internal class MemoryParser
         viewHandle.ReleasePointer();
     }
 
-    private static void Run(ref ReadOnlySpan<byte> memory, Dictionary<long, ValueCounter> dictionary)
+    private static void Run(ref ReadOnlySpan<byte> memory, Dictionary<long, Counter> dictionary)
     {
         int newline;
 
@@ -72,12 +72,10 @@ internal class MemoryParser
             
             var name = line[..sc];
             var key = KeyHash.FastKey(name);
-            
-            ref var counter = ref CollectionsMarshal.GetValueRefOrAddDefault(dictionary, key, out bool exists);
-            
-            if (!exists)
+
+            if (!dictionary.TryGetValue(key, out var counter))
             {
-                counter.SetName(Encoding.UTF8.GetString(name));
+                dictionary[key] = counter = new(Encoding.UTF8.GetString(name));
             }
             
             counter.Record(value);

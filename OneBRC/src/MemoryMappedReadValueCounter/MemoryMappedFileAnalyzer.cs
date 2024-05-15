@@ -1,6 +1,6 @@
 ﻿using System.IO.MemoryMappedFiles;
 
-namespace OneBRC;
+namespace MemoryMappedReadValueCounter;
 
 public static class MemoryMappedFileAnalyzer
 {
